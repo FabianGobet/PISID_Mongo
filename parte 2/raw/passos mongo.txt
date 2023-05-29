@@ -198,6 +198,11 @@ ip0 = 13.42.44.74
 ip1 = ip2 = ip3 = ip4 = 46.189.143.63
 
 
+docker run -itd --name machine1-aws -p 37101:37101 -p 37111:37111 -p 37121:37121 -p 37131:37131 fabiangobet/mongocluster-machine1:1
+docker run -itd --name machine2-aws -p 37102:37102 -p 37112:37112 -p 37122:37122 -p 37132:37132 fabiangobet/mongocluster-machine2:1
+docker run -itd --name machine3-aws -p 37141:37141 fabiangobet/mongocluster-router0:1
+docker run -itd --name machine4-aws -p 37140:37140 fabiangobet/mongocluster-router0:1
+
 rs.initiate(
   {
     _id: "cfg",
@@ -282,7 +287,8 @@ Depois de compor todos os shards e respetivas replicas, executando 'ps aux' em c
 
 Resta agora apenas configurar e lançar os pontos de entrada(mongos)
 
-docker run -itd --name machine4 -p 37040:37040 -p 37041:37041 fabiangobet/mongobase:1.2
+docker run -itd --name machine4 -p 37040:37040 fabiangobet/mongocluster-router0:1
+docker run -itd --name machine3 -p 37041:37041 fabiangobet/mongocluster-router0:1
 
 Consideremos uma maquina 4 tal que: Maquina4 ip3:37040, onde ip3=46.189.143.63
 
