@@ -1,0 +1,123 @@
+Shard			CFG			A			B			C
+Maquina0	ip0:37100	ip0:37110	ip0:37120	ip0:37130
+Maquina1	ip1:37101	ip1:37111	ip1:37121	ip1:37131
+Maquina2	ip2:37102	ip1:37112	ip2:37122	ip2:37132
+
+mongos(router)			s
+Maquina3			ip3:37141
+Maquina4			ip4:37140
+
+ip0 = 3.8.243.72
+ip2 = 85.247.12.172
+ip1 = ip3 = ip4 = 46.189.143.63
+
+
+docker run -itd --name machine1-aws -p 37101:37101 -p 37111:37111 -p 37121:37121 -p 37131:37131 fabiangobet/mongocluster-machine1:1
+docker run -itd --name machine2-aws -p 37102:37102 -p 37112:37112 -p 37122:37122 -p 37132:37132 fabiangobet/mongocluster-machine2:1
+docker run -itd --name machine3-aws -p 37141:37141 fabiangobet/mongocluster-router0:1
+docker run -itd --name machine4-aws -p 37140:37140 fabiangobet/mongocluster-router0:1
+
+rs.initiate(
+  {
+    _id: "cfg",
+    configsvr: true,
+    members: [
+      { _id : 0, host : "3.8.243.72:37100" },
+      { _id : 1, host : "46.189.143.63:37101", priority: 0.9 },
+      { _id : 2, host : "85.247.12.172:37102", priority: 0.9 }
+    ]
+  }
+)
+
+
+rs.initiate(
+  {
+    _id: "a",
+    members: [
+      { _id : 0, host : "3.8.243.72:37110" },
+      { _id : 1, host : "46.189.143.63:37111", priority: 0.9 },
+      { _id : 2, host : "85.247.12.172:37112", priority: 0.9 }
+    ]
+  }
+)
+
+
+rs.initiate(
+  {
+    _id: "b",
+    members: [
+      { _id : 0, host : "3.8.243.72:37120" },
+      { _id : 1, host : "46.189.143.63:37121", priority: 0.9 },
+      { _id : 2, host : "85.247.12.172:37122", priority: 0.9 }
+    ]
+  }
+)
+
+
+rs.initiate(
+  {
+    _id: "c",
+    members: [
+      { _id : 0, host : "3.8.243.72:37130" },
+      { _id : 1, host : "46.189.143.63:37131", priority: 0.9 },
+      { _id : 2, host : "85.247.12.172:37132", priority: 0.9 }
+    ]
+  }
+)
+
+
+sharding:
+  configDB: cfg/3.8.243.72:37100,46.189.143.63:37001,85.247.12.172:37102
+
+sudo -i 
+  
+mongos --port 37140
+
+Use admin 
+db.createUser({user:"root", pwd:"root", roles:[{role:"root", db:"admin"}]})
+db.auth('root','root')
+db.createUser({user:"admin",pwd:"admin",roles:[{role:"clusterAdmin",db:"admin"},{role:"readAnyDatabase",db:"admin"},"readWrite"]})
+
+> sh.addShard("a/3.8.243.72:37110,46.189.143.63:37111,85.247.12.172:37112")
+> sh.addShard("b/3.8.243.72:37120,46.189.143.63:37121,85.247.12.172:37122")
+> sh.addShard("c/3.8.243.72:37130,46.189.143.63:37131,85.247.12.172:37132")
+
+use mqttData
+db.createCollection("mazemov14")
+db.createCollection("mazetemp14")
+db.createCollection("mazelog14")
+db.createCollection("mazemanage14")
+db.createUser({user:"javaop",pwd:"javaop",roles:["readWrite"]})
+sh.enableSharding("mqttData")
+sh.shardCollection("mqttData.mazemanage14",{"numExp":"hashed"})
+sh.shardCollection("mqttData.mazelog14",{"Hora":"hashed"})
+sh.shardCollection("mqttData.mazemov14",{"numExp":"hashed"})
+sh.shardCollection("mqttData.mazetemp14",{"numExp":"hashed"})
+
+
+use teste
+db.createUser({user:"javaop",pwd:"javaop",roles:["readWrite"]})
+
+db.createCollection("hashed")
+sh.shardCollection("teste.hashed",{"numExp":"hashed"})
+
+db.createCollection("ranged")
+sh.addShardToZone("a","1")
+sh.updateZoneKeyRange("teste.ranged",{numExp:1}, {numExp:4}, "1")
+sh.addShardToZone("b","2")
+sh.updateZoneKeyRange("teste.ranged",{numExp:4}, {numExp:7}, "2")
+sh.addShardToZone("c","3")
+sh.updateZoneKeyRange("teste.ranged",{numExp:7}, {numExp:10}, "3")
+sh.shardCollection("teste.ranged",{numExp:1})
+sh.status()
+
+sh.updateZoneKeyRange("teste.ranged",{numExp:7}, {numExp:10}, null) --> apagar
+sh.hashed.getShardDistribution()
+sh.ranged.getShardDistribution()
+
+> correr programa
+> parar maquina 3 e notar sequencia N1 
+> parar maquina 2 e notar sequencia N2
+
+db.hashed.find({$and:[{numExp: {$gt: {N1|N2}-10}},{numExp:  {$lt: {N1|N2}-10}}]}).sort({"numExp":1})
+db.ranged.find({$and:[{sequence: {$gt: N1|N2}-10}},{sequence:  {$lt: {N1|N2}-10}}]}).sort({"sequence":1})
