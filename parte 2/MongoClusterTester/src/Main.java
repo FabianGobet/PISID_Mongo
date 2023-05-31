@@ -11,7 +11,7 @@ public class Main {
 
         String user = "javaop";
         String password = "javaop";
-        String address = "46.189.143.63:37040,46.189.143.63:37041";
+        String address = "46.189.143.63:37140,3.8.243.72:37141";
         String database = "teste";
         String URI = "mongodb://"+user+":"+password+"@"+address+"/?&authSource="+database;
 
